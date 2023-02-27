@@ -1,0 +1,6 @@
+name: "demo"
+output:
+  html_document:
+    theme: flatly # specifies the theme
+
+output_dir: "." # if publishing on Github pages
