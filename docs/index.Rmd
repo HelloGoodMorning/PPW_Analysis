@@ -1,0 +1,115 @@
+---
+title: "Peter Plumley-Walker Analysis"
+output: html_document
+---
+```{r setup, include=FALSE}
+library(s20x)
+```
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.height=3)
+
+```
+
+
+# Introduction
+
+Peter Plumley-Walker was found dead at the foot of Huka Falls in the North Island of New Zealand. After the discovery of his body, two defendants were bought to court. The prosecution argued that the defendants murdered Peter by throwing him over Huka Falls while he was still alive. The defence argued that it was manslaughter, and that Peter was dead before his body was thrown over the falls. The purpose of this analysis is to statistically determine whether the defence case is beyond reasonable doubt.
+
+ 
+It is known that people who are taller, on average have larger lungs, therefore heavier lungs. It is also know that the weight of lungs will increase from drowning due to the presence of water.
+
+
+The data set used in this analysis was obtained by statistician Peter Mullins and was used during this trial.
+
+**How:** How the person died - Hung/Drown\
+**Ht:** Person's height (cm)\
+**Wt:** Person's lung weight (grams)\
+
+Peter Plumley-Walker's height and lung weight were 196cm and 1125g respectively.
+
+
+```{r,fig.height=4.2}
+PPW.df <- read.csv("PPW.csv", header=TRUE)
+
+plot(Wt~Ht, type="n",data=PPW.df,
+     xlab = "Height (cm)", ylab = "Lung Weight (g)")
+text(Wt~Ht, labels=substr(How,1,1),
+     col=ifelse(How=="Drown","blue", "brown"),
+     data=PPW.df, cex=0.9, font=2)
+
+#PPW measurements
+points(196.0,1125, pch=80,col="green")
+
+```
+
+# Initial Comments
+
+As expected there is an increasing linear relationship between height(Ht) and lung weight(Wt). The plot indicates that the method of death(How) is expected to have an explanatory effect, as the lung weights for drownings are generally higher than hangings for heights in the same ranges. If we consider different means for the method of death, the scatter seems to be relatively constant around the mean for both methods. However the scatter for drownings shows much more variability. There appears to be no outliers in the data.
+
+Given the observations, the weight of PPW’s lungs appears to be lower than what would be expected if he had died by drowning. However it is not at all unreasonably lower than what would be expected. The initial observations noted that the scatter for drownings showed much more variability compared to the scatter for hangings. Considering this variability in the scatter, it is impossible to determine whether he died from drowning at this point.
+
+# Fitting the model
+
+```{r,fig.height=4.2}
+fit1 = lm(Wt ~ Ht * How, data=PPW.df)
+anova(fit1)
+
+fit2 = lm(Wt ~ Ht + How, data=PPW.df)
+summary(fit2)
+plot(fit2, which=1)
+normcheck(fit2)
+```
+
+We wish to model the relationship of lung weights (Wt) with two explanatory variables, height(Ht) and method of death (How). Initially I fitted a linear model with different slopes (interaction model) for each factor (Hung or Drown). The interaction term was non significant p-value = 0.281, so the model was refitted without the interaction term. There are no problems with independence, normality and equality of variance assumptions.
+
+For every 1 cm increase in height, lung weight increases by approximately 19.5 grams. For people of the same height, we expect people who drowned to have heavier lungs by approximately 227.9 grams.
+
+
+# Prediction Interval
+
+```{r,fig.height=4.2}
+plot(Wt~Ht, type="n",data=PPW.df,
+     xlab = "Height (cm)", ylab = "Lung Weight (g)")
+text(Wt~Ht, labels=substr(How,1,1),
+     col=ifelse(How=="Drown","blue", "brown"),
+     data=PPW.df, cex=0.9, font=2)
+points(196.0,1125, pch=80,col="green")
+
+abline(fit2$coef[1]+ fit2$coef[3], fit2$coef[2], col="brown", lty=2) #predict for hung
+abline(fit2$coef[1], fit2$coef[2],col="blue", lty=2) #predict for drown
+
+#prediction interval
+method.df <- data.frame(Ht = c(196, 196), How = c("Drown", "Hung"))
+preds = predict(fit2, method.df, interval = "prediction")
+preds
+
+segments(196-.5,preds[1,2], 196-.5, preds[1,3], col="brown")
+segments(196+.5,preds[2,2], 196+.5, preds[2,3], col="blue")
+
+```
+
+Using this model, PPW's lung weight is very close to the fitted value we would expect from someone within the same height range who died from hanging, and is considerably lower than what would be expected from someone who died from drowning. However as mentioned before, the scatter for drownings were considerably more varied than the scatter for hangings. This model was only able to account for 79% of the variability in the lung weights, and the standard error of the residuals was considerably large at 171.8.
+
+This model predicts that for someone approximately 196cm tall, 95% of the time their lung weight will be between 980g and 1670g if they died by drowning, and 751g and 1444g if they died by hanging. Not only are these intervals too wide to give us any meaningful information, but also, PPW's lung weight at death was 1125g, meaning that either scenario is still plausible.
+
+# Logistic Regression model
+```{r,fig.height=4.2}
+fit3 <- glm(I(How=="Hung")~ Wt + Ht, family =binomial(link="logit"), data = PPW.df)
+summary(fit3)
+
+#confidence interval
+predictGLM(fit3,newdata=data.frame(Ht=196,Wt=1125), type = "response", cilevel = 0.95)
+
+```
+
+Here I am fitting a logistic regression model to predict the probability of death due to hanging, using Ht and Wt as explanatory variables. This model predicts that with 95% confidence the probability that PPW died before entering the water is between 0.32 and 0.72. This is a large range and it is worth noting that 0.5 is in this confidence interval, meaning that we cannot statistically determine how he died. 
+
+
+# Conclusion
+In conclusion we cannot determine with confidence whether he died from drowning. Because of the assumption of innocence the defendants should not be charged as guilty based on statistical analysis alone.
+
+
+
+
+
